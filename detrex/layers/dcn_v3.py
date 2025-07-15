@@ -14,7 +14,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.autograd import Function
 from torch.autograd.function import once_differentiable
-from torch.cuda.amp import custom_bwd, custom_fwd
+from torch.amp import custom_bwd, custom_fwd
 from torch.nn.init import xavier_uniform_, constant_
 
 
@@ -68,7 +68,7 @@ def _get_reference_points(spatial_shapes, device, kernel_h, kernel_w, dilation_h
     H_out = (H_ - (dilation_h * (kernel_h - 1) + 1)) // stride_h + 1
     W_out = (W_ - (dilation_w * (kernel_w - 1) + 1)) // stride_w + 1
 
-    ref_y, ref_x = torch.meshgrid(
+    ref_y, ref_x = torch.meshgrid([
         torch.linspace(
             # pad_h + 0.5,
             # H_ - pad_h - 0.5,
@@ -84,7 +84,8 @@ def _get_reference_points(spatial_shapes, device, kernel_h, kernel_w, dilation_h
             (dilation_w * (kernel_w - 1)) // 2 + 0.5 + (W_out - 1) * stride_w,
             W_out,
             dtype=torch.float32,
-            device=device))
+            device=device)], 
+        indexing='ij')
     ref_y = ref_y.reshape(-1)[None] / H_
     ref_x = ref_x.reshape(-1)[None] / W_
 
@@ -97,7 +98,7 @@ def _get_reference_points(spatial_shapes, device, kernel_h, kernel_w, dilation_h
 def _generate_dilation_grids(spatial_shapes, kernel_h, kernel_w, dilation_h, dilation_w, group, device):
     _, H_, W_, _ = spatial_shapes
     points_list = []
-    x, y = torch.meshgrid(
+    x, y = torch.meshgrid([
         torch.linspace(
             -((dilation_w * (kernel_w - 1)) // 2),
             -((dilation_w * (kernel_w - 1)) // 2) +
@@ -109,7 +110,8 @@ def _generate_dilation_grids(spatial_shapes, kernel_h, kernel_w, dilation_h, dil
             -((dilation_h * (kernel_h - 1)) // 2) +
             (kernel_h - 1) * dilation_h, kernel_h,
             dtype=torch.float32,
-            device=device))
+            device=device)],
+        indexing='ij')
 
     points_list.extend([x / W_, y / H_])
     grid = torch.stack(points_list, -1).reshape(-1, 1, 2).\
